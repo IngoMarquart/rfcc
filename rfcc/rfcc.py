@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from typing import Union, Optional
 from scipy.cluster.hierarchy import linkage, fcluster
-from rfcc.path_ops import recurse_path
+from rfcc.path_ops import recurse_path,encode_path_ordinal
 from itertools import combinations
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy.stats import skew
@@ -28,6 +28,8 @@ class rfcc():
                 "Could not initialize {} model with parameters: {}, {}".format(model, args, kwargs))
 
         self.encoding_dict = None
+        self.X_col_names=None
+        self.y_col_names=None
         self.y_encoding_dict = None
         self.y_enc = None
         self.X_enc=None
@@ -37,7 +39,7 @@ class rfcc():
         self.partition=None
         self.unique_cluster=None
         self.cluster_desc=None
-        
+        self.leaves=None
     def clusters(self):
         pass
     def cluster_descriptions(self, variables_to_consider: Optional[list] = None, continuous_measures: Optional[list]=None):
@@ -87,81 +89,59 @@ class rfcc():
             
         
         
+  
+    def path_analysis(self, estimator_id:Optional[int]=None):
         
-    def __create_cluster_descriptions(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], y_categorical:bool, categoricals: Optional[list] = None, variables_to_consider: Optional[list] = None):
+        assert self.fitted is True, "Model needs to be fitted to return paths descriptions!"
         
-        assert self.fitted is True, "Model needs to be fitted to create cluster descriptions!"
-        
-        outcome=y.columns
-        rcdata=pd.merge(y, X, left_index=True, right_index=True)
-        
-        continuous=np.setdiff1d(X.columns,categoricals)
-        descriptions={}
-        
-        # Continuous variables
-        column_dict={}
-        for col in continuous:
-            cluster_dict={}
-            for cl in self.unique_cluster:
-                cl_mask=self.cluster_list==cl
-                subset=X.loc[cl_mask,col]
-                cluster_dict[cl]={'mean':np.mean(subset), 'median':np.median(subset), 'std':np.std(subset),'max':np.max(subset), 'min': np.min(subset),'skew':skew(subset)}
-            column_dict[col]=cluster_dict
-        descriptions['cont']=column_dict
-        
-        # Categorical variables
-        column_dict={}
-        for col in categoricals:
+        if estimator_id is not None:
+            assert estimator_id in range(0,len(self.model.estimators_)), "No estimator for this id found."
+        else:
+            # TODO: Pick best tree here
+            estimator_id=0
+        estimator=self.model.estimators_[estimator_id]
+        cluster_assignments=self.leaves[:,estimator_id]
+        leaf_nodes,nr_obs=np.unique(cluster_assignments, return_counts=True)
+        # Name of cluster will be included in a dict where
+        # descriptions[cluster_id] gives a list of strings describing the cluster.
+        descriptions=dict()
+        # Loop along the clusters and extract decision paths
+        # From these, we construct the name of the cluster
+        for i,leaf_id in enumerate(leaf_nodes):
+            # Lists to fill for this iteration
+            leaf_path=list()
+            leaf_feature=list()
+            leaf_threshold=list()
+            leaf_direction=list()
+            # Start with leaf, which are the cluster nodes
+            current_node=leaf_id
+            # Extract paths, features and thresholds
+            leaf_path,leaf_feature,leaf_threshold,leaf_direction=recurse_path(current_node,leaf_path,leaf_feature,leaf_threshold,leaf_direction,estimator)
             
-            cluster_dict={}
-            for cl in self.unique_cluster:
-                cl_mask=self.cluster_list==cl
-                subset=X.loc[cl_mask,col]
-                values, number=np.unique(subset,return_counts=True)
-                total=np.sum(number)
-                ratios=np.round(number/total,2)
-                desc=['{}: {}%'.format(x,y) for x,y in zip(values,ratios)]
-                desc=', '.join(desc)
-                cluster_dict[cl]=desc
-            column_dict[col]=cluster_dict
-        descriptions['cat']=column_dict
-        
-        # Outcome either categorical or not
-        column_dict={}
-        for col in outcome:
+            desc_path=encode_path_ordinal(self.X_col_names,leaf_path,leaf_feature,leaf_threshold,leaf_direction, self.encoding_dict)
             
-            if y_categorical:
-                cluster_dict={}
-                for cl in self.unique_cluster:
-                    cl_mask=self.cluster_list==cl
-                    subset=y.loc[cl_mask,col]
-                    values, number=np.unique(subset,return_counts=True)
-                    total=np.sum(number)
-                    ratios=np.round(number/total,2)
-                    desc=['{}: {}%'.format(x,y) for x,y in zip(values,ratios)]
-                    desc=', '.join(desc)
-                    cluster_dict[cl]=desc
-                column_dict[col]=cluster_dict    
-            else:
-                cluster_dict={}
-                for cl in self.unique_cluster:
-                    cl_mask=self.cluster_list==cl
-                    subset=y.loc[cl_mask,col]
-                    cluster_dict[cl]={'mean':np.mean(subset), 'median':np.median(subset), 'std':np.std(subset),'max':np.max(subset), 'min': np.min(subset),'skew':skew(subset)}
-                column_dict[col]=cluster_dict                                                
-        descriptions['y']=column_dict
-        # Further stats
-        cluster_dict={}
-        for cl in self.unique_cluster:
-            cl_mask=self.cluster_list==cl
-            subset=X.loc[cl_mask,:]
-            cluster_dict[cl]={'Nr':subset.shape[0]}
-        descriptions['stats']=cluster_dict
-        
-        self.cluster_desc=descriptions
+            # Add output predictions for leafs
+            outputs=estimator.tree_.value[leaf_id]
+            output_cols=[]
+            for j,ycol in enumerate(self.y_col_names):
+                nameing="Output_{}".format(ycol)
+                output_cols.append(nameing)
+                desc_path[nameing]=outputs[j]
+            
+            desc_path['Nr_Obs']=nr_obs[i]
+            desc_path['Cluster_ID']=leaf_id
+            descriptions[leaf_id]=desc_path
+            
+            
 
-    def path_analysis(self):
-        pass
+        # Get number of nodes
+        df=pd.DataFrame(descriptions).T
+        df=df.fillna("-")
+        a=['Cluster_ID','Nr_Obs']
+        a.extend(output_cols)
+        a.extend(self.X_col_names)
+        df=df[np.intersect1d(df.columns,a)]
+        return df,descriptions
 
     def measures(self):
         pass
@@ -187,6 +167,10 @@ class rfcc():
         if isinstance(y, pd.Series):
             y = y.to_frame()
 
+        # Set np seed if given
+        random_state=kwargs.get('random_state',0)
+        np.random.seed(random_state)
+
         if categoricals is None:
             categoricals = X.columns
         else:
@@ -194,7 +178,8 @@ class rfcc():
                 categoricals, list), "Please provide categorical variables as list"
 
         self.categoricals=categoricals
-
+        self.X_col_names=X.columns
+        self.y_col_names=y.columns
         # Prepare data by ordinal encoding
         X, self.encoding_dict, self.X_enc = ordinal_encode(X, categoricals, return_enc=True)
         if encode_y:
@@ -287,3 +272,75 @@ class rfcc():
         X.loc[:,categoricals]=self.X_enc.inverse_transform(X[categoricals])
         self.__create_cluster_descriptions(X,y,encode_y,categoricals)
         
+      
+    def __create_cluster_descriptions(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], y_categorical:bool, categoricals: Optional[list] = None, variables_to_consider: Optional[list] = None):
+        
+        assert self.fitted is True, "Model needs to be fitted to create cluster descriptions!"
+        
+        outcome=y.columns
+        rcdata=pd.merge(y, X, left_index=True, right_index=True)
+        
+        continuous=np.setdiff1d(X.columns,categoricals)
+        descriptions={}
+        
+        # Continuous variables
+        column_dict={}
+        for col in continuous:
+            cluster_dict={}
+            for cl in self.unique_cluster:
+                cl_mask=self.cluster_list==cl
+                subset=X.loc[cl_mask,col]
+                cluster_dict[cl]={'mean':np.mean(subset), 'median':np.median(subset), 'std':np.std(subset),'max':np.max(subset), 'min': np.min(subset),'skew':skew(subset)}
+            column_dict[col]=cluster_dict
+        descriptions['cont']=column_dict
+        
+        # Categorical variables
+        column_dict={}
+        for col in categoricals:
+            
+            cluster_dict={}
+            for cl in self.unique_cluster:
+                cl_mask=self.cluster_list==cl
+                subset=X.loc[cl_mask,col]
+                values, number=np.unique(subset,return_counts=True)
+                total=np.sum(number)
+                ratios=np.round(number/total,2)
+                desc=['{}: {}%'.format(x,y) for x,y in zip(values,ratios)]
+                desc=', '.join(desc)
+                cluster_dict[cl]=desc
+            column_dict[col]=cluster_dict
+        descriptions['cat']=column_dict
+        
+        # Outcome either categorical or not
+        column_dict={}
+        for col in outcome:
+            
+            if y_categorical:
+                cluster_dict={}
+                for cl in self.unique_cluster:
+                    cl_mask=self.cluster_list==cl
+                    subset=y.loc[cl_mask,col]
+                    values, number=np.unique(subset,return_counts=True)
+                    total=np.sum(number)
+                    ratios=np.round(number/total,2)
+                    desc=['{}: {}%'.format(x,y) for x,y in zip(values,ratios)]
+                    desc=', '.join(desc)
+                    cluster_dict[cl]=desc
+                column_dict[col]=cluster_dict    
+            else:
+                cluster_dict={}
+                for cl in self.unique_cluster:
+                    cl_mask=self.cluster_list==cl
+                    subset=y.loc[cl_mask,col]
+                    cluster_dict[cl]={'mean':np.mean(subset), 'median':np.median(subset), 'std':np.std(subset),'max':np.max(subset), 'min': np.min(subset),'skew':skew(subset)}
+                column_dict[col]=cluster_dict                                                
+        descriptions['y']=column_dict
+        # Further stats
+        cluster_dict={}
+        for cl in self.unique_cluster:
+            cl_mask=self.cluster_list==cl
+            subset=X.loc[cl_mask,:]
+            cluster_dict[cl]={'Nr':subset.shape[0]}
+        descriptions['stats']=cluster_dict
+        
+        self.cluster_desc=descriptions
