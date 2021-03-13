@@ -22,26 +22,36 @@ def get_mpg_dataset_cat():
     return Y,X,categoricals
 
 
-seeds=list(range(0,100))
+seeds=list(range(0,10))
 cluster_sizes=list(range(2,30))
 Y,X,categoricals=get_mpg_dataset_cat()
 df_list=[]
 for cluster_size in cluster_sizes:
     outliers_new=[]
     outliers_old=[]
+    std_new=[]
+    std_old=[]
+    mean_new=[]
+    mean_old=[]
     for seed in seeds:
         
         model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
         model.fit(X,Y,categoricals,encode_y=False)
-        df=model.cluster_descriptions(continuous_measures=['mean'])
+        df=model.cluster_descriptions(continuous_measures=['std'])
         outliers_new.append(len(np.where(df['Nr_Obs']==1)[0]))
+        mean_new.append(np.mean(df['Nr_Obs']))
+        std_new.append(np.std(df['Nr_Obs']))
         
         model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
         model.fit(X,Y,categoricals,encode_y=False, clustering_type="old")
-        df=model.cluster_descriptions(continuous_measures=['mean'])
+        df=model.cluster_descriptions(continuous_measures=['std'])
         outliers_old.append(len(np.where(df['Nr_Obs']==1)[0]))
-    df_list.append({'Clustersize':cluster_size, 'Outliers_New':np.mean(outliers_new),'Outliers_Old':np.mean(outliers_old)})
+        std_old.append(np.mean(df['cty-std']))
+        std_old.append(np.mean(df['Nr_Obs']))
+        mean_old.append(np.std(df['Nr_Obs']))
+
+    df_list.append({'Clustersize':cluster_size, 'RFCC avg':np.mean(mean_new),'Binary avg':np.mean(mean_old), 'RFCC std':np.mean(std_new),'Binary std':np.mean(std_old)})
     
-df=pd.DataFrame(df_list)
-df=df.set_index('Clustersize')
-df.plot()
+df2=pd.DataFrame(df_list)
+df2=df2.set_index('Clustersize')
+df2.plot()
