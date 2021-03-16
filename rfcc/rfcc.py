@@ -68,6 +68,9 @@ class rfcc():
                             if cm in continuous_measures:
                                 label='{}-{}'.format(col,cm)
                                 cl_dict[label]=cl_y[cm]
+                        else:
+                            label='{}-{}'.format(col,cm)
+                            cl_dict[label]=cl_y[cm]
                         
             # cat_var
             
@@ -158,7 +161,7 @@ class rfcc():
 
         return self.model.score(X, y, **kwargs)
 
-    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], categoricals: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "consensus", linkage_method: Optional[str] = 'average', **kwargs):
+    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], categoricals: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "consensus", t_param:Optional[float]=None, linkage_method: Optional[str] = 'average', **kwargs):
 
         assert isinstance(X, pd.DataFrame), "Please provide X as pd.DataFrame"
         assert isinstance(y, (pd.Series, pd.DataFrame)
@@ -240,27 +243,31 @@ class rfcc():
                     p2 = leaf_path_dict[dyad[1]][0]
                     path_length = len(np.setxor1d(p1, p2))
                     leaf_distance_matrix.loc[dyad[0],
-                                             dyad[1]] = path_length/len(leaf_nodes)
+                                             dyad[1]] = path_length
                 leaf_distance_matrix += leaf_distance_matrix.T
+                # Normalize path distance
+                leaf_distance_matrix=leaf_distance_matrix/np.max(leaf_distance_matrix.values)
                 # Build the rows for each leaf->obs, and then apply
                 # to observation the fitting leaf node
                 for leaf_id in leaf_nodes:
                     row = np.array(obs_cluster_labels, dtype=float)
+                    row = np.zeros(obs_cluster_labels.shape, dtype=float)
                     for alter in leaf_nodes:
-                        row[row == alter] = leaf_distance_matrix.loc[leaf_id, alter]
+                        row[obs_cluster_labels == alter] = leaf_distance_matrix.loc[leaf_id, alter]
                     # Add result for applicable observations to the distance matrix
                     distance_matrix[obs_cluster_labels == leaf_id, :] += row
-            # Derive condensed form
-            distance_matrix = squareform(distance_matrix)
             # Normalize
-            distance_matrix = distance_matrix/nr_estimator
+            distance_matrix=squareform(distance_matrix)/nr_estimator        
         else:
             # Regular clustering based on similarities of leaf nodes
             distance_matrix = pdist(self.leaves, metric='hamming')
 
         # Run Clustering
         dendogram = linkage(distance_matrix, method=linkage_method)
-        self.cluster_list = fcluster(dendogram, avg_nr_leaves, 'maxclust')
+        if t_param == None:
+            self.cluster_list = fcluster(dendogram, avg_nr_leaves, 'maxclust')
+        else:
+            self.cluster_list = fcluster(dendogram, t_param, 'distance')
         self.unique_cluster=np.unique(self.cluster_list)
         self.partition = {y_index[i]: self.cluster_list[i] for i in range(0, n)}
         
