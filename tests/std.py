@@ -23,49 +23,62 @@ def get_mpg_dataset_cat():
     return Y,X,categoricals
 
 
-seeds=list(range(500,502))
+seeds=list(range(500,700))
+t_params=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 Y,X,categoricals=get_mpg_dataset_cat()
 df_list=[]
 full_list=[]
-for cluster_size in trange(2,15, desc="Depth"):
-    outliers_new=[]
-    outliers_old=[]
-    std_new=[]
-    std_old=[]
-    mean_new=[]
-    mean_old=[]
-    cty_std_new=[]
-    cty_std_old=[]
-    nr_cl_new=[]
-    nr_cl_old=[]
-    for seed in tqdm(seeds, leave=True, position = 0, desc="Depth {}".format(cluster_size)):
-        
-        model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
-        model.fit(X,Y,categoricals,encode_y=False, linkage_method="average", t_param=0.2)
-        df=model.cluster_descriptions()
-        full_list.append(df)
-        outliers_new.append(len(np.where(df['Nr_Obs']==1)[0]))
-        mean_new.append(np.mean(df['Nr_Obs']))
-        std_new.append(np.std(df['Nr_Obs']))
-        nr_cl_new.append(len(df['Nr_Obs']))
-        cty_std_new.append(np.mean(df['cty-std']))
-        model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
-        model.fit(X,Y,categoricals,encode_y=False, clustering_type="old", linkage_method="average", t_param=0.2)
-        df=model.cluster_descriptions()
-        outliers_old.append(len(np.where(df['Nr_Obs']==1)[0]))
-        cty_std_old.append(np.mean(df['cty-std']))
-        std_old.append(np.std(df['Nr_Obs']))
-        nr_cl_old.append(len(df['Nr_Obs']))
-        mean_old.append(np.mean(df['Nr_Obs']))
-
-    df_list.append({'Clustersize':cluster_size, 'Nr_RCC':np.mean(nr_cl_new),'Nr_Binary':np.mean(nr_cl_old), 'RFCC outcome std': np.mean(cty_std_new), 'Binary outcome std': np.mean(cty_std_old), 'RFCC avg':np.mean(mean_new),'Binary avg':np.mean(mean_old), 'RFCC std':np.mean(std_new),'Binary std':np.mean(std_old)})
+for cluster_size in trange(2,40, desc="Depth"):
+    for t_param in t_params:
+        outliers_new=[]
+        outliers_old=[]
+        std_new=[]
+        std_old=[]
+        mean_new=[]
+        mean_old=[]
+        cty_std_new=[]
+        cty_std_old=[]
+        nr_cl_new=[]
+        nr_cl_old=[]
+        for seed in tqdm(seeds, leave=True, position = 0, desc="Depth {}, t {}".format(cluster_size,t_param)):
+            
+            model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+            model.fit(X,Y,categoricals,encode_y=False, linkage_method="average", t_param=t_param)
+            df=model.cluster_descriptions()
+            full_list.append(df)
+            outliers_new.append(len(np.where(df['Nr_Obs']==1)[0]))
+            mean_new.append(np.mean(df['Nr_Obs']))
+            std_new.append(np.std(df['cty-std']/df['Nr_Obs']))
+            nr_cl_new.append(len(df['Nr_Obs']))
+            cty_std_new.append(np.mean(df['cty-std']))
+            model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+            model.fit(X,Y,categoricals,encode_y=False, clustering_type="old", linkage_method="average", t_param=t_param)
+            df=model.cluster_descriptions()
+            outliers_old.append(len(np.where(df['Nr_Obs']==1)[0]))
+            cty_std_old.append(np.mean(df['cty-std']))
+            std_old.append(np.std(df['cty-std']/df['Nr_Obs']))
+            nr_cl_old.append(len(df['Nr_Obs']))
+            mean_old.append(np.mean(df['Nr_Obs']))
     
-df2=pd.DataFrame(df_list)
-df2=df2.set_index('Clustersize')
-df2[['RFCC avg','Binary avg']].plot()
-df2[['RFCC std','Binary std']].plot()
-df2[['RFCC outcome std','Binary outcome std']].plot()
-df2['RFCC']=df2['RFCC outcome std']/df2['RFCC avg']
-df2['Binary']=df2['Binary outcome std']/df2['Binary avg']
-df2[['RFCC','Binary']].plot()
+        df_list.append({'tparam': t_param, 'Clustersize':cluster_size, 'Nr_RCC':np.mean(nr_cl_new),'Nr_Binary':np.mean(nr_cl_old), 'RFCC outcome std': np.mean(cty_std_new), 'Binary outcome std': np.mean(cty_std_old), 'RFCC avg':np.mean(mean_new),'Binary avg':np.mean(mean_old), 'RFCC y stdnorm':np.mean(std_new),'Binary y stdnorm':np.mean(std_old)})
+  
+# Sensitivity to cutoffs
+df3=pd.DataFrame(df_list)
+df3=df3.set_index('tparam')   
+df2=df3[df3.Clustersize==5]     
 df2[['Nr_RCC','Nr_Binary']].plot()
+df2=df3[df3.Clustersize==10]     
+df2[['Nr_RCC','Nr_Binary']].plot()
+df2=df3[df3.Clustersize==20]     
+df2[['Nr_RCC','Nr_Binary']].plot()
+
+
+df3=pd.DataFrame(df_list)
+df3=df3.set_index('Clustersize')
+for t_param in t_params:
+    df2=df3[df3.tparam==t_param]
+    df2['RFCC']=df2['RFCC outcome std']/df2['RFCC avg']
+    df2['Binary']=df2['Binary outcome std']/df2['Binary avg']
+    df2[['RFCC','Binary']].plot()
+    df2[['RFCC y stdnorm','Binary y stdnorm']].plot()
+    #df2[['Nr_RCC','Nr_Binary']].plot()
