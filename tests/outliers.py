@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import numpy as np
 import pandas as pd
 from itertools import product
-
+from tqdm import tqdm
 
 def get_mpg_dataset_cat():
     dataset=data("mpg")
@@ -22,14 +22,14 @@ def get_mpg_dataset_cat():
     return Y,X,categoricals
 
 
-seeds=list(range(0,2))
-cluster_sizes=list(range(2,25))
+seeds=list(range(500,1000))
+cluster_sizes=list(range(2,40))
 Y,X,categoricals=get_mpg_dataset_cat()
 df_list=[]
 for cluster_size in cluster_sizes:
     outliers_new=[]
     outliers_old=[]
-    for seed in seeds:
+    for seed in tqdm(seeds, leave=True, position = 0, desc="Depth {}".format(cluster_size)):
         
         model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
         model.fit(X,Y,categoricals,encode_y=False,t_param=None)
