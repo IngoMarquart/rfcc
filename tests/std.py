@@ -28,7 +28,7 @@ t_params=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 Y,X,categoricals=get_mpg_dataset_cat()
 df_list=[]
 full_list=[]
-for cluster_size in trange(2,40, desc="Depth"):
+for cluster_size in trange(2,31, desc="Depth"):
     for t_param in t_params:
         outliers_new=[]
         outliers_old=[]
@@ -64,21 +64,28 @@ for cluster_size in trange(2,40, desc="Depth"):
   
 # Sensitivity to cutoffs
 df3=pd.DataFrame(df_list)
+df3=df3[df3['Clustersize']<=30]
 df3=df3.set_index('tparam')   
-df2=df3[df3.Clustersize==5]     
-df2[['Nr_RCC','Nr_Binary']].plot()
-df2=df3[df3.Clustersize==10]     
-df2[['Nr_RCC','Nr_Binary']].plot()
-df2=df3[df3.Clustersize==20]     
-df2[['Nr_RCC','Nr_Binary']].plot()
+df2=df3.groupby('tparam').mean()
+df2=df2[['RFCC avg','Binary avg']]
+df2.columns=["RFCC","Binary"]
+df2[["RFCC","Binary"]].plot()
 
-
+# Cluster size
 df3=pd.DataFrame(df_list)
+df3=df3[df3['Clustersize']<=30]
 df3=df3.set_index('Clustersize')
-for t_param in t_params:
-    df2=df3[df3.tparam==t_param]
-    df2['RFCC']=df2['RFCC outcome std']/df2['RFCC avg']
-    df2['Binary']=df2['Binary outcome std']/df2['Binary avg']
-    df2[['RFCC','Binary']].plot()
-    df2[['RFCC y stdnorm','Binary y stdnorm']].plot()
-    #df2[['Nr_RCC','Nr_Binary']].plot()
+df2=df3.groupby('Clustersize').mean()
+df2=df2[['Nr_RCC','Nr_Binary']]
+df2.columns=["RFCC","Binary"]
+df2[["RFCC","Binary"]].plot()
+
+# STD normalized by cluster size
+df3=pd.DataFrame(df_list)
+df3=df3[df3['Clustersize']<=30]
+df3=df3.set_index('Clustersize')
+df2=df3.groupby('Clustersize').mean()
+df2=df2[['RFCC y stdnorm','Binary y stdnorm']]
+df2.columns=["RFCC","Binary"]
+df2[["RFCC","Binary"]].plot()
+

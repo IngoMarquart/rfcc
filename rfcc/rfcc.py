@@ -18,14 +18,14 @@ from scipy.stats import skew
 
 class rfcc():
 
-    def __init__(self,*args, model=RandomForestClassifier,  max_clusters: Optional[int] = None, logger=None, **kwargs):
+    def __init__(self,model=RandomForestClassifier,  max_clusters: Optional[int] = None, logger=None, **kwargs):
 
         # Try to construct model
         try:
-            self.model = model(*args, max_leaf_nodes=max_clusters, **kwargs)
+            self.model = model(max_leaf_nodes=max_clusters, **kwargs)
         except:
             raise AttributeError(
-                "Could not initialize {} model with parameters: {}, {}".format(model, args, kwargs))
+                "Could not initialize {} model with parameters: {}".format(model,kwargs))
 
         self.encoding_dict = None
         self.X_col_names=None
@@ -52,6 +52,12 @@ class rfcc():
         catg=self.cluster_desc['cat']
         y=self.cluster_desc['y']
         
+        if variables_to_consider is None:
+            variables_to_consider=self.X_col_names
+        
+        if isinstance(continuous_measures, str):
+            continuous_measures=[continuous_measures]
+        
         medoids=[]
         for cl in self.unique_cluster:
             cl_dict={}
@@ -75,25 +81,27 @@ class rfcc():
             # cat_var
             
             for col in catg:
-                cl_dict[col]=catg[col][cl]
+                if col in variables_to_consider:
+                    cl_dict[col]=catg[col][cl]
             # cont-var
             for col in cont:
-                cl_cont=cont[col][cl]
-                for cm in cl_cont:
-                    if continuous_measures is not None:
-                        if cm in continuous_measures:
+                if col in variables_to_consider:
+                    cl_cont=cont[col][cl]
+                    for cm in cl_cont:
+                        if continuous_measures is not None:
+                            if cm in continuous_measures:
+                                label='{}-{}'.format(col,cm)
+                                cl_dict[label]=cl_cont[cm]
+                        else:
                             label='{}-{}'.format(col,cm)
                             cl_dict[label]=cl_cont[cm]
-                    else:
-                        label='{}-{}'.format(col,cm)
-                        cl_dict[label]=cl_cont[cm]
             medoids.append(cl_dict)
         return pd.DataFrame(medoids)
             
         
         
   
-    def path_analysis(self, estimator_id:Optional[int]=None):
+    def path_analysis(self, estimator_id:Optional[int]=None, return_as:Optional[str]="frame"):
         
         assert self.fitted is True, "Model needs to be fitted to return paths descriptions!"
         
@@ -144,7 +152,10 @@ class rfcc():
         a.extend(output_cols)
         a.extend(self.X_col_names)
         df=df[np.intersect1d(df.columns,a)]
-        return df,descriptions
+        if return_as == "dict":
+            return descriptions
+        else:
+            return df
 
     def measures(self):
         pass
@@ -158,10 +169,10 @@ class rfcc():
         return self.model.predict(X, **kwargs)
 
     def score(self, X, y, **kwargs):
-
+        #TODO
         return self.model.score(X, y, **kwargs)
 
-    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], categoricals: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "consensus", t_param:Optional[float]=None, linkage_method: Optional[str] = 'average', **kwargs):
+    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], categoricals: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "rfcc", t_param:Optional[float]=None, linkage_method: Optional[str] = 'average', **kwargs):
 
         assert isinstance(X, pd.DataFrame), "Please provide X as pd.DataFrame"
         assert isinstance(y, (pd.Series, pd.DataFrame)
@@ -207,7 +218,7 @@ class rfcc():
                           for i in range(0, self.leaves.shape[1])]
         avg_nr_leaves = int(np.mean(nr_leave_nodes))
         # Regular clustering, or consensus clustering
-        if clustering_type == "consensus":
+        if clustering_type == "rfcc":
             # Create one distance matrix for all estimators
             # TODO: use lil sparse matrix and a cutoff to populate matrices
             # if nr_obs is very high!
