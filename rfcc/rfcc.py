@@ -99,7 +99,11 @@ class rfcc():
         return pd.DataFrame(medoids)
             
         
-        
+    def get_observations(self, cluster_id:int):
+        return list(np.where(self.cluster_list==cluster_id)[0])
+    
+    def get_cluster(self, observation_id:int):
+        return self.cluster_list[observation_id]
   
     def path_analysis(self, estimator_id:Optional[int]=None, return_as:Optional[str]="frame"):
         

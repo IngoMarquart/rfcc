@@ -34,8 +34,17 @@ clusters=model.cluster_descriptions(variables_to_consider=['class','manufacturer
 
 clusters=clusters.sort_values(by="cty-mean")
 
-display(clusters.head(1))
+print(clusters.head(1))
 
 
-a,b=model.path_analysis(0)
+paths=model.path_analysis(0)
 
+
+clusters=model.cluster_descriptions(continuous_measures="mean")
+clusters=clusters.sort_values(by="Nr_Obs")
+outliers=clusters.head(2)
+print(outliers)
+
+
+ids=model.get_observations(cluster_id=3)
+print(dataset.iloc[ids,:])

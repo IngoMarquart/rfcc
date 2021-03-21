@@ -130,7 +130,7 @@ paths.sort_values(by="Output_cty")
 print(paths.head(5))
 ```
 
-```
+```python
 Nr_Obs	Output_cty	class	                        displ	                    manufacturer
 17	    [11.4]	    class is not: 2seater, compact	displ between 5.25 and 4.4	manufacturer: audi, chevrolet, dodge
 21	    [12.4]	    class: suv	                    displ larger than: 4.4	    manufacturer is not: audi, chevrolet, dodge
@@ -139,3 +139,46 @@ Nr_Obs	Output_cty	class	                        displ	                    manufa
 5	    [13.4]	    class: minivan	                displ between 3.75 and 3.15	-
 22	    [14.1]	-	                                displ between 4.4 and 3.85	-
 ```
+
+## Detection of outliers and mislabelled data
+
+Outliers are observations that are unusual - not necessarily because their features differ, but rather because their implications for the outcome variable are different from other comparable observations. Mislabelled data may appear as
+outlier, since the relationships between outcome and feature values may not make much sense.
+
+Since outliers follow distinct decision paths in the random forest, RFCC does not cluster them with other observations.
+We can therefore find outliers by analyzing clusters that have very few observations.
+
+Let's see what outliers exist in the mpg data.
+```python
+clusters=model.cluster_descriptions(continuous_measures="mean")
+clusters=clusters.sort_values(by="Nr_Obs")
+outliers=clusters.head(2)
+print(outliers)
+```
+
+```python
+Cluster_ID	Nr_Obs	cty-mean	class	        cyl	        manufacturer	    displ-mean
+16	        1	    16.0	    minivan: 1.0%	6: 1.0%	    dodge: 1.0%	        4.0
+3	        2	    18.0	    midsize: 1.0%	6: 1.0%	    hyundai: 1.0%	    2.5
+```
+
+It seems we have one cluster (id=16) with a dodge minivan, and a cluster (id=3) with two observations.
+We can get the constituent observations directly from our model.
+
+
+```python
+ids=model.get_observations(cluster_id=16)
+print(dataset.iloc[ids,:])
+ids=model.get_observations(cluster_id=3)
+print(dataset.iloc[ids,:])
+```
+
+```python
+	manufacturer	model	       displ	year	cyl	    trans
+48  dodge           caravan 2wd    4.0      2008    6       auto(l6)
+
+	manufacturer	model	displ	year	cyl	    trans
+113	hyundai	        sonata	2.5	    1999	6	    auto(l4)
+114	hyundai	        sonata	2.5	    1999	6	    manual(m5)
+```
+
