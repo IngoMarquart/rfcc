@@ -70,7 +70,7 @@ Since miles-per-gallon is a continuous measure, we'll be using a random forest r
 
 ```python
 from sklearn.ensemble import RandomForestRegressor
-from rfcc import cluster_model
+from rfcc.model import cluster_model
 model=cluster_model(model=RandomForestRegressor,max_clusters=20,random_state=1)
 ```
 
