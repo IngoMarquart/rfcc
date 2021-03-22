@@ -11,7 +11,7 @@ X=dataset[x_col]
 
 # Initialize model
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from rfcc import cluster_model
+from rfcc.model import cluster_model
 model=cluster_model(model=RandomForestRegressor,max_clusters=20,random_state=5 )
 
 
@@ -55,7 +55,7 @@ X=dataset[x_col]
 
 # Initialize model
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from rfcc import cluster_model
+from rfcc.model import cluster_model
 model=cluster_model(model=RandomForestClassifier,random_state=5 )
 
 # Fit model

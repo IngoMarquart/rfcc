@@ -26,11 +26,12 @@ More info in here:
 Marquart, Ingo and Koca Marquart, Ebru, RFCC: Random Forest Consensus Clustering for Regression and Classification (March 19, 2021). Available at SSRN: https://ssrn.com/abstract=3807828 or http://dx.doi.org/10.2139/ssrn.3807828
 ```
 
-
-Example
-
 # Installation
 
+Install via pip!
+```python
+pip install rfcc
+```
 
 # Usage
 
