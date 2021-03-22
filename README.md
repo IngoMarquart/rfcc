@@ -42,7 +42,6 @@ The data is available in the pydataset package
 dataset=data("mpg")
 y_col=["cty"]
 x_col=['displ', 'class' , 'cyl']
-categoricals=['class', 'cyl']
 Y=dataset[y_col]
 X=dataset[x_col]
 print(X.head(5))
@@ -86,14 +85,16 @@ Another option is to set __max_clusters__ to a high value, or leave it unspecifi
 Now we need to fit our model to the data.
 
 ```python
-model.fit(X,Y,categoricals)
+model.fit(X,Y)
 ```
 
-Categoricals is a list of columns that we'd like to encode before fitting the model.
+
 
 The following optional parameters can be passed
 
-- **encode_y** (bool): Also encode the outcome variable as categorical
+- **encode** (list): A list of columns that we'd like to encode before fitting the model. Note that all non-numerical columns will be encoded automatically. However, you can also encode numerical data by passing it in the __encode__ parameter.
+
+- **encode_y** (bool): You can choose to ordinally encode the outcome variables. If you do a classification, scikit learn will choose how to encode the outcome variables. If the variable is continuous, this will usually lead to a rather bad fit, in which case you may want to encode.
 
 - **linkage_method** (str): Linkage method used in the clustering algorithm (average, single, complete, ward)
 

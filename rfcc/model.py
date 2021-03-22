@@ -296,7 +296,7 @@ class cluster_model():
         X,y,categoricals = self.__transform_data(X, y, self.encode_y, self.categoricals, False)
         return self.model.score(X, y, **kwargs)
 
-    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], categoricals: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "rfcc", t_param: Optional[float] = None, linkage_method: Optional[str] = 'average', **kwargs):
+    def fit(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], encode: Optional[list] = None, encode_y: Optional[bool] = False, clustering_type: Optional[str] = "rfcc", t_param: Optional[float] = None, linkage_method: Optional[str] = 'average', **kwargs):
         """
         Fit the model, cluster observations and derive cluster measures and descriptions.
 
@@ -306,7 +306,7 @@ class cluster_model():
             Input features.
         y : Union[pd.DataFrame, pd.Series]
             Outcome variables.
-        categoricals : Optional[list], optional
+        encode : Optional[list], optional
             List of features (column names) to be encoded ordinally. If None, all are encoded. The default is None.
         encode_y : Optional[bool], optional
             Whether to encode outcome variable. The default is False.
@@ -330,18 +330,21 @@ class cluster_model():
         assert isinstance(y, (pd.Series, pd.DataFrame)
                           ), "Please provide y as pd.DataFrame or pd.Series"
 
+
+
+
         # Set np seed if given
         random_state = kwargs.get('random_state', 0)
         np.random.seed(random_state)
         
         # Prepare data
-        X,y,categoricals = self.__transform_data(X, y, encode_y, categoricals)
+        X,y,encode = self.__transform_data(X, y, encode_y, encode)
 
-        self.categoricals = categoricals
+        self.encode = encode
         self.X_col_names = X.columns
         self.y_col_names = y.columns
         self.encode_y = encode_y
- 
+        
         n = y.shape[0]
         y_index = np.array(y.index)
         # Need a slightly different call for 1 dimensional outputs
@@ -433,25 +436,34 @@ class cluster_model():
             y_ind = y.index
             y = pd.DataFrame(self.y_enc.inverse_transform(y),
                              columns=y_cols, index=y_ind)
-        X.loc[:, categoricals] = self.X_enc.inverse_transform(X[categoricals])
-        self.__create_cluster_descriptions(X, y, encode_y, categoricals)
+        X.loc[:, encode] = self.X_enc.inverse_transform(X[encode])
+        self.__create_cluster_descriptions(X, y, encode_y, encode)
 
-    def __transform_data(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], encode_y: bool, categoricals: Optional[list] = None, save_encoding:Optional[bool]= True):
+    def __transform_data(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], encode_y: bool, encode: Optional[list] = None, save_encoding:Optional[bool]= True):
         
         
         if isinstance(y, pd.Series):
             y = y.to_frame()
 
+
+        # Check if y is categorical
+        # Determine which columns are not numeric
+        x_numeric=X.select_dtypes(include=np.number).columns.tolist()
+        y_numeric=y.select_dtypes(include=np.number).columns.tolist()  
+        x_categorical = np.setdiff1d(X.columns,x_numeric)
+        y_categorical = np.setdiff1d(y.columns,y_numeric)
         
-        if categoricals is None:
-            categoricals = X.columns
+        if encode is None:
+            encode = x_categorical
         else:
             assert isinstance(
-                categoricals, list), "Please provide categorical variables as list"
-
+                encode, list), "Please provide categorical variables to encode as list"
+            # We have to encode all non numerical columsn
+            x_categorical= np.union1d(x_categorical,encode)
+        
         # Prepare data by ordinal encoding
         X, encoding_dict, X_enc = ordinal_encode(
-            X, categoricals, return_enc=True)
+            X, x_categorical, return_enc=True)
         if encode_y:
             y, y_encoding_dict, y_enc = ordinal_encode(
                 y, y.columns, return_enc=True)
@@ -465,24 +477,28 @@ class cluster_model():
             self.X_enc = X_enc
             self.y_encoding_dict = y_encoding_dict
             self.y_enc = y_enc
+            self.y_categorical=y_categorical
+            self.x_categorical=x_categorical
+            self.y_numeric = y_numeric
+            self.x_numeric = x_numeric
             
-        return X,y,categoricals
+        return X,y,x_categorical
 
 
 
-    def __create_cluster_descriptions(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], y_categorical: bool, categoricals: Optional[list] = None, variables_to_consider: Optional[list] = None):
+    def __create_cluster_descriptions(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], y_categorical: bool, encode: Optional[list] = None, variables_to_consider: Optional[list] = None):
 
         assert self.fitted is True, "Model needs to be fitted to create cluster descriptions!"
 
         outcome = y.columns
-        rcdata = pd.merge(y, X, left_index=True, right_index=True)
+        #rcdata = pd.merge(y, X, left_index=True, right_index=True)
 
-        continuous = np.setdiff1d(X.columns, categoricals)
+        #continuous = np.setdiff1d(X.columns, categoricals)
         descriptions = {}
 
         # Continuous variables
         column_dict = {}
-        for col in continuous:
+        for col in self.x_numeric:
             cluster_dict = {}
             for cl in self.unique_cluster:
                 cl_mask = self.cluster_list == cl
@@ -494,7 +510,7 @@ class cluster_model():
 
         # Categorical variables
         column_dict = {}
-        for col in categoricals:
+        for col in self.x_categorical:
 
             cluster_dict = {}
             for cl in self.unique_cluster:
@@ -513,7 +529,7 @@ class cluster_model():
         column_dict = {}
         for col in outcome:
 
-            if y_categorical:
+            if col in self.y_categorical:
                 cluster_dict = {}
                 for cl in self.unique_cluster:
                     cl_mask = self.cluster_list == cl
