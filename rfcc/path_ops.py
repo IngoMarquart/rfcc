@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar  9 11:56:33 2021
-
-@author: Ingo Marquart, ingo.marquart@esmt.org
-"""
 import numpy as np
 
 

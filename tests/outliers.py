@@ -4,7 +4,7 @@ import pandas as pd
 from pydataset import data
 import numpy as np
 from rfcc.data_ops import ordinal_encode
-from rfcc.rfcc import rfcc
+from rfcc import cluster_model
 import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import numpy as np
@@ -31,12 +31,12 @@ for cluster_size in cluster_sizes:
     outliers_old=[]
     for seed in tqdm(seeds, leave=True, position = 0, desc="Depth {}".format(cluster_size)):
         
-        model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+        model=cluster_model(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
         model.fit(X,Y,categoricals,encode_y=False,t_param=None)
         df=model.cluster_descriptions(continuous_measures=['mean'])
         outliers_new.append(len(np.where(df['Nr_Obs']==1)[0]))
         
-        model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+        model=cluster_model(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
         model.fit(X,Y,categoricals,encode_y=False, clustering_type="old",t_param=None)
         df=model.cluster_descriptions(continuous_measures=['mean'])
         outliers_old.append(len(np.where(df['Nr_Obs']==1)[0]))

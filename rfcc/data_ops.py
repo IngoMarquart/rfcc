@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  7 13:09:07 2021
-
-@author: Ingo Marquart, ingo.marquart@esmt.org
-"""
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OrdinalEncoder

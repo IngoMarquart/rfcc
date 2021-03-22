@@ -4,7 +4,7 @@ import pandas as pd
 from pydataset import data
 import numpy as np
 from rfcc.data_ops import ordinal_encode
-from rfcc.rfcc import rfcc
+from rfcc import cluster_model
 import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import numpy as np
@@ -42,7 +42,7 @@ for cluster_size in trange(2,31, desc="Depth"):
         nr_cl_old=[]
         for seed in tqdm(seeds, leave=True, position = 0, desc="Depth {}, t {}".format(cluster_size,t_param)):
             
-            model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+            model=cluster_model(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
             model.fit(X,Y,categoricals,encode_y=False, linkage_method="average", t_param=t_param)
             df=model.cluster_descriptions()
             full_list.append(df)
@@ -51,7 +51,7 @@ for cluster_size in trange(2,31, desc="Depth"):
             std_new.append(np.std(df['cty-std']/df['Nr_Obs']))
             nr_cl_new.append(len(df['Nr_Obs']))
             cty_std_new.append(np.mean(df['cty-std']))
-            model=rfcc(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
+            model=cluster_model(model=RandomForestRegressor,max_clusters=cluster_size,random_state=seed )
             model.fit(X,Y,categoricals,encode_y=False, clustering_type="old", linkage_method="average", t_param=t_param)
             df=model.cluster_descriptions()
             outliers_old.append(len(np.where(df['Nr_Obs']==1)[0]))

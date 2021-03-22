@@ -1,7 +1,31 @@
-# rfcc
-Python RFCC - Data understanding, clustering and outlier detection for regression and classifcation tasks
+# Python RFCC - Data understanding, clustering and outlier detection for regression and classification tasks
 
-Description
+Random forests are invariant and robust estimators that can fit complex interactions between input data of different types and binary, categorical, or continuous outcome variables, including those with multiple dimensions. In addition to these desirable properties, random forests impose a structure on the observations from which researchers and data analysts can infer clusters or groups of interest. 
+
+You can use these clusters to:
+
+- structure your data,
+
+- elucidate new patterns of how features influence outcomes,
+
+- define subgroups for further analysis, 
+
+- derive prototypical observations, 
+
+- identify outlier observations, 
+
+- catch mislabeled data, 
+
+- evaluate the performance of the estimation model in more detail.
+
+Random Forest Consensus Clustering and implement is implemented in the Scikit-Learn / SciPy data science ecosystem. This algorithm differs from prior approaches by making use of the entire tree structure. Observations become proximate if they follow similar decision paths across trees of a random forest.
+
+More info in here:
+
+```
+Marquart, Ingo and Koca Marquart, Ebru, RFCC: Random Forest Consensus Clustering for Regression and Classification (March 19, 2021). Available at SSRN: https://ssrn.com/abstract=3807828 or http://dx.doi.org/10.2139/ssrn.3807828
+```
+
 
 Example
 
@@ -37,15 +61,17 @@ We want __class__ and __cyl__ to be treated as categorical variable, so we'll ke
 
 ## Initialization and model choice
 
-The first step is to initialize the model, much like one would initialize an scikit-learn model. We only need to pass an appropriate ensemble model (RandomForestClassifier, RandomForestRegressor) and specify the options we'd like to use.
+The first step is to initialize the model, much like one would initialize an scikit-learn model.
+The main class is __cluster_model__ from the rfcc package.
+We only need to pass an appropriate ensemble model (RandomForestClassifier, RandomForestRegressor) and specify the options we'd like to use.
+
 
 Since miles-per-gallon is a continuous measure, we'll be using a random forest regression.
 
 ```python
-
 from sklearn.ensemble import RandomForestRegressor
-from rfcc.rfcc import rfcc
-model=rfcc(model=RandomForestRegressor,max_clusters=20,random_state=1)
+from rfcc import cluster_model
+model=cluster_model(model=RandomForestRegressor,max_clusters=20,random_state=1)
 ```
 
 We have two options to specify the size and number of clusters to be returned.
@@ -75,6 +101,16 @@ The following optional parameters can be passed
 
 - **t_param** (float): If None, number of clusters corresponds to average number of leafs. If __t_param__ is specified,
 pick that level of clustering hierarchy where distance between members of the group is less than __t_param__. The higher the value, the larger average size of a cluster. 
+
+Let's check how well our model does on our training set
+
+```python
+model.score(X,Y)
+```
+
+```python
+0.9231321010907177
+```
 
 ## Cluster compositions
 
@@ -118,6 +154,8 @@ Nr_Obs	cty-mean	class	                                            manufacturer
 
 Cluster descriptions return the proportions of values for any feature we are interested in. However, we also may want to know how a decision tree classifies an observation. For example, it may be that the feature __manufacturer__  has
 no predictive value, whereas the number of cylinders or the displacement does.
+
+Another reason to do a decision path analysis is to check whether 
 
 Currently, path analyses are queried for each estimator in the random forest. 
 In the future patch, the path analysis will be available for the entire random forest.

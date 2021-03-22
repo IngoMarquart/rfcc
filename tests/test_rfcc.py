@@ -1,15 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar  9 18:22:23 2021
-
-@author: marquart
-"""
 from sklearn.datasets import load_wine
 import pandas as pd
 from pydataset import data
 import numpy as np
 from rfcc.data_ops import ordinal_encode
-from rfcc.rfcc import rfcc
+from rfcc import cluster_model
 import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import numpy as np
@@ -31,7 +25,7 @@ def test_fit(get_mpg_dataset):
 
     Y,X,categoricals=get_mpg_dataset_cat
     
-    model=rfcc(model=RandomForestRegressor,max_clusters=15 )
+    model=cluster_model(model=RandomForestRegressor,max_clusters=15 )
     
     model.fit(X,Y,categoricals,encode_y=False)
     df=model.cluster_descriptions(continuous_measures=['std'])
@@ -44,7 +38,7 @@ def test_path_analysis(get_mpg_dataset):
 
     Y,X,categoricals=get_mpg_dataset_cat
     
-    model=rfcc(model=RandomForestRegressor,max_clusters=15 )
+    model=cluster_model(model=RandomForestRegressor,max_clusters=15 )
     
     model.fit(X,Y,categoricals,encode_y=False)
     

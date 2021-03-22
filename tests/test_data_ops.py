@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  7 13:14:01 2021
-
-@author: Ingo Marquart, ingo.marquart@esmt.org
-"""
 from sklearn.datasets import load_wine
 import pandas as pd
 from pydataset import data
