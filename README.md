@@ -76,9 +76,10 @@ model=cluster_model(model=RandomForestRegressor,max_clusters=20,random_state=1)
 
 We have two options to specify the size and number of clusters to be returned.
 
-The parameter __max_clusters__ sets the maximum amount of leafs in each decision tree. It ensures that the model does not return too many or too few clusters, but it does change the estimation of the random forest.
+The parameter __max_clusters__ sets the maximum amount of leafs in each decision tree. It ensures that the model does not return too many or too few clusters, but it does change the estimation of the random forest. 
 
-Another option is to set __max_clusters__ to a high value, or leave it unspecified, and use the hierarchical clustering algorithm to extract clusters of the desired size. See below for __t_param__ in the fit method.
+Perhaps you already have the best parameters for your random forest on hand, or want to use the default values?
+Another option to get clusters of the desired size is to not set __max_clusters__ here, but use the hierarchical clustering algorithm to extract clusters of the desired size. See below for __t_param__ in the fit method.
 
 
 ## Fitting and optional parameters
@@ -117,7 +118,7 @@ model.score(X,Y)
 ## Cluster compositions
 
 Once the model is fit, we can extract the composition of clusters.
-Let's see which car types and cylinders have the best and worst miles-per-gallon performance.
+Let's see which car types and manufacturers have the best and worst miles-per-gallon performance.
 
 First, we use the cluster_descriptions method to return the compositions for each cluster.
 
@@ -157,8 +158,6 @@ Nr_Obs	cty-mean	class	                                            manufacturer
 Cluster descriptions return the proportions of values for any feature we are interested in. However, we also may want to know how a decision tree classifies an observation. For example, it may be that the feature __manufacturer__  has
 no predictive value, whereas the number of cylinders or the displacement does.
 
-Another reason to do a decision path analysis is to check whether 
-
 Currently, path analyses are queried for each estimator in the random forest. 
 In the future patch, the path analysis will be available for the entire random forest.
 
@@ -179,6 +178,8 @@ Nr_Obs	Output_cty	class	                        displ	                    manufa
 5	    [13.4]	    class: minivan	                displ between 3.75 and 3.15	-
 22	    [14.1]	-	                                displ between 4.4 and 3.85	-
 ```
+
+Another reason to do a decision path analysis is to help to diagnose outliers or mislabeled data. 
 
 ## Detection of outliers and mislabelled data
 
