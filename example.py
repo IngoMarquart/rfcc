@@ -21,6 +21,7 @@ model.fit(X,Y,encode,encode_y=False, linkage_method="complete")
 # Check score
 print(model.score(X,Y))
 
+print(model.predict(X))
 
 # Get clusters
 clusters=model.cluster_descriptions(variables_to_consider=['class','manufacturer'], continuous_measures="mean")

@@ -265,7 +265,7 @@ class cluster_model():
         """
         assert self.fitted is True, "Model needs to be fitted to return paths descriptions!"
         # Transform data to conform to fitted model
-        y=np.zeros(X.shape[0])
+        y=pd.Series(np.zeros(X.shape[0]))
         X,y,categoricals = self.__transform_data(X, y, False, self.categoricals, False)
 
         return self.model.predict(X, **kwargs)
@@ -441,6 +441,9 @@ class cluster_model():
 
     def __transform_data(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], encode_y: bool, encode: Optional[list] = None, save_encoding:Optional[bool]= True):
         
+        
+        if isinstance(y, np.ndarray):
+            y = pd.DataFrame(y)
         
         if isinstance(y, pd.Series):
             y = y.to_frame()
